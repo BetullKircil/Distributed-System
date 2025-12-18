@@ -1,0 +1,15 @@
+## .NET derleme çıktıları
+[Bb]in/
+[Oo]bj/
+
+## JetBrains Rider & IntelliJ (Mac için özel)
+.idea/
+*.sln.DotSettings.user
+.DS_Store
+
+## Visual Studio
+.vs/
+*.user
+
+## Docker
+.dockerignore

@@ -28,6 +28,12 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ProductDbContext>();
 }
 
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = "redis:6379"; 
+    options.InstanceName = "ProductService_"; 
+});
+
 app.MapControllers();
 app.MapGraphQL();
 
