@@ -1,0 +1,8 @@
+POST http://localhost:5110/api/Order
+Content-Type: application/json
+
+{
+  "customerId": 48,
+  "totalAmount": 159.00,
+  "status": "Created"
+}

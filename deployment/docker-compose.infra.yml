@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  # 1. Message Broker (RabbitMQ)
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # Uygulama haberleşmesi
+      - "15672:15672" # Yönetim Paneli (Tarayıcıdan girmek için)
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - microservices-net
+
+  # 2. Cache (Redis)
+  redis:
+    image: redis:6.2-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+    networks:
+      - microservices-net
+
+  # 3. Identity Service DB (PostgreSQL)
+  identitydb:
+    image: postgres:14-alpine
+    container_name: identitydb
+    environment:
+      POSTGRES_DB: identity_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5431:5432" # Dışarıya 5431 olarak açtık (Çakışmasın diye)
+    volumes:
+      - identitydata:/var/lib/postgresql/data
+    networks:
+      - microservices-net
+
+  # 4. Product Service DB
+  productdb:
+    image: postgres:14-alpine
+    container_name: productdb
+    environment:
+      POSTGRES_DB: product_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432" # Varsayılan port
+    volumes:
+      - productdata:/var/lib/postgresql/data
+    networks:
+      - microservices-net
+
+  # 5. Customer Service DB
+  customerdb:
+    image: postgres:14-alpine
+    container_name: customerdb
+    environment:
+      POSTGRES_DB: customer_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5433:5432"
+    volumes:
+      - customerdata:/var/lib/postgresql/data
+    networks:
+      - microservices-net
+
+  # 6. Order Service DB
+  orderdb:
+    image: postgres:14-alpine
+    container_name: orderdb
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5434:5432"
+    volumes:
+      - orderdata:/var/lib/postgresql/data
+    networks:
+      - microservices-net
+
+  # 7. Notification Service DB
+  notificationdb:
+    image: postgres:14-alpine
+    container_name: notificationdb
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5435:5432"
+    volumes:
+      - notificationdata:/var/lib/postgresql/data
+    networks:
+      - microservices-net
+
+# Kalıcı veri alanları (Konteyner silinse bile veriler gitmez)
+volumes:
+  identitydata:
+  productdata:
+  customerdata:
+  orderdata:
+  notificationdata:
+
+# Tüm servislerin konuşacağı ortak ağ
+networks:
+  microservices-net:
+    driver: bridge

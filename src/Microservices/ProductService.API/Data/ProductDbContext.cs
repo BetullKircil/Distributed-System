@@ -1,0 +1,13 @@
+using Microsoft.EntityFrameworkCore;
+using ProductService.API.Models;
+
+namespace ProductService.API.Data;
+
+public class ProductDbContext : DbContext
+{
+    public ProductDbContext(DbContextOptions<ProductDbContext> options) : base(options)
+    {
+    }
+
+    public DbSet<Product> Products { get; set; }
+}

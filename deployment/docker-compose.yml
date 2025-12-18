@@ -1,0 +1,185 @@
+
+version: '3.8'
+
+services:
+  # --- ALTYAPI (INFRA) ---
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports: ["5672:5672", "15672:15672"]
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - micro-net
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: redis
+    ports: ["6379:6379"]
+    networks:
+      - micro-net
+
+  identitydb:
+    image: postgres:14-alpine
+    container_name: identitydb
+    environment:
+      POSTGRES_DB: identity_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports: ["5431:5432"]
+    volumes: [identitydata:/var/lib/postgresql/data]
+    networks:
+      - micro-net
+
+  productdb:
+    image: postgres:14-alpine
+    container_name: productdb
+    environment:
+      POSTGRES_DB: product_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports: ["5432:5432"]
+    volumes: [productdata:/var/lib/postgresql/data]
+    networks:
+      - micro-net
+
+  customerdb:
+    image: postgres:14-alpine
+    container_name: customerdb
+    environment:
+      POSTGRES_DB: customer_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports: ["5433:5432"]
+    volumes: [customerdata:/var/lib/postgresql/data]
+    networks:
+      - micro-net
+
+  orderdb:
+    image: postgres:14-alpine
+    container_name: orderdb
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports: ["5434:5432"]
+    volumes: [orderdata:/var/lib/postgresql/data]
+    networks:
+      - micro-net
+
+  notificationdb:
+    image: postgres:14-alpine
+    container_name: notificationdb
+    environment:
+      POSTGRES_DB: notification_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    ports: ["5435:5432"]
+    volumes: [notificationdata:/var/lib/postgresql/data]
+    networks:
+      - micro-net
+
+  # --- UYGULAMALAR (APPS) ---
+  
+  identityservice:
+    build:
+      context: ../src/Microservices
+      dockerfile: IdentityService.API/Dockerfile
+    container_name: identityservice
+    ports: ["5001:8080"] # Dışarıdan 5001 ile erişeceğiz
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=identitydb;Port=5432;Database=identity_db;Username=user;Password=password
+      - ASPNETCORE_HTTP_PORTS=8080
+    depends_on: [identitydb]
+    networks:
+      - micro-net
+
+  productservice:
+    build:
+      context: ../src/Microservices
+      dockerfile: ProductService.API/Dockerfile
+    container_name: productservice
+    ports: ["5002:8080"]
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=productdb;Port=5432;Database=product_db;Username=user;Password=password
+      - Redis__Configuration=redis:6379
+      - ASPNETCORE_HTTP_PORTS=8080
+    depends_on: [productdb, redis]
+    networks:
+      - micro-net
+
+  customerservice:
+    build:
+      context: ../src/Microservices
+      dockerfile: CustomerService.API/Dockerfile
+    container_name: customerservice
+    ports: ["5003:8080"]
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=customerdb;Port=5432;Database=customer_db;Username=user;Password=password
+      - ASPNETCORE_HTTP_PORTS=8080
+    depends_on: [customerdb]
+    networks:
+      - micro-net
+
+  orderservice:
+    build:
+      context: ../src/Microservices
+      dockerfile: OrderService.API/Dockerfile
+    container_name: orderservice
+    ports: ["5110:8080"]
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=orderdb;Port=5432;Database=order_db;Username=user;Password=password
+      - RabbitMq__Host=rabbitmq
+      - ASPNETCORE_URLS=http://0.0.0.0:8080
+    depends_on:
+        rabbitmq:
+          condition: service_healthy
+        orderdb:
+          condition: service_started
+    networks:
+      - micro-net
+
+  notificationservice:
+    build:
+      context: ../src/Microservices
+      dockerfile: NotificationService.Worker/Dockerfile
+    container_name: notificationservice
+    environment:
+      - ConnectionStrings__DefaultConnection=Host=notificationdb;Port=5432;Database=notification_db;Username=user;Password=password
+      - RabbitMq__Host=rabbitmq
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      notificationdb:
+        condition: service_started
+    networks:
+      - micro-net
+
+  apigateway:
+    build:
+      context: ../src/Microservices
+      dockerfile: ApiGateway.API/Dockerfile
+    container_name: apigateway
+    ports: ["5138:8080"]
+    environment:
+      - ASPNETCORE_HTTP_PORTS=8080
+    depends_on: [identityservice, productservice, customerservice, orderservice]
+    networks:
+      - micro-net
+
+volumes:
+  identitydata:
+  productdata:
+  customerdata:
+  orderdata:
+  notificationdata:
+
+networks:
+  micro-net:
+    driver: bridge
